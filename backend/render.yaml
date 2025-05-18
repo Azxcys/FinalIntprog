@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: ipt-final-2025-backend
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: DB_HOST
+        value: 153.92.15.31
+      - key: DB_USER
+        value: u875409848_hmagsayo
+      - key: DB_NAME
+        value: u875409848_hmagsayo
+      - key: NODE_ENV
+        value: production 
