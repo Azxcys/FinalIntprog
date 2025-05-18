@@ -11,7 +11,7 @@ const app = express();
 // CORS configuration
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
-    ? ['https://ipt-final-2025.vercel.app', 'http://localhost:3000']
+    ? ['http://localhost:3000']
     : 'http://localhost:3000',
   credentials: true,
   optionsSuccessStatus: 200
