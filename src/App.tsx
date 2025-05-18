@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { ThemeProvider, CssBaseline } from '@mui/material';
 import { createTheme } from '@mui/material/styles';
 import Navbar from './components/Navbar';
@@ -23,6 +23,29 @@ const theme = createTheme({
   },
 });
 
+// Component to handle page retention
+const PageRetention = () => {
+  const location = useLocation();
+  const path = location.pathname;
+
+  // Map of valid routes to their components
+  const routeMap: { [key: string]: React.ReactNode } = {
+    '/accounts': <Accounts />,
+    '/departments': <Departments />,
+    '/employees': <Employees />,
+    '/requests': <Requests />,
+    '/': <Accounts />
+  };
+
+  // If the current path is valid, render its component
+  if (routeMap[path]) {
+    return <>{routeMap[path]}</>;
+  }
+
+  // If path is not valid, redirect to home
+  return <Navigate to="/" replace />;
+};
+
 function App() {
   return (
     <ThemeProvider theme={theme}>
@@ -31,11 +54,7 @@ function App() {
         <Router>
           <Navbar />
           <Routes>
-            <Route path="/accounts" element={<Accounts />} />
-            <Route path="/departments" element={<Departments />} />
-            <Route path="/employees" element={<Employees />} />
-            <Route path="/requests" element={<Requests />} />
-            <Route path="/" element={<Accounts />} />
+            <Route path="/*" element={<PageRetention />} />
           </Routes>
         </Router>
       </DepartmentProvider>
