@@ -3,9 +3,11 @@
   "builds": [
     {
       "src": "package.json",
-      "use": "@vercel/static-build",
+      "use": "@vercel/node",
       "config": {
-        "distDir": "build"
+        "build": {
+          "command": "chmod +x ./node_modules/.bin/react-scripts && npm run build"
+        }
       }
     }
   ],
@@ -23,13 +25,8 @@
       "dest": "/manifest.json"
     },
     {
-      "src": "/.*",
+      "src": "/(.*)",
       "dest": "/index.html"
     }
-  ],
-  "build": {
-    "env": {
-      "CI": "false"
-    }
-  }
+  ]
 } 
