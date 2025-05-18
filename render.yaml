@@ -2,13 +2,20 @@ services:
   - type: web
     name: ipt-final-2025-frontend
     env: node
-    buildCommand: chmod +x build.sh && ./build.sh
+    buildCommand: |
+      echo "Node version:" && node --version
+      chmod +x build.sh
+      ./build.sh
     startCommand: npx serve -s build
     envVars:
       - key: REACT_APP_API_URL
         value: https://finalintproggroupf.onrender.com/api
       - key: NODE_VERSION
         value: 16.20.0
+      - key: NODE_ENV
+        value: production
+      - key: CI
+        value: false
     routes:
       - type: rewrite
         source: /*
