@@ -9,7 +9,7 @@
       "use": "@vercel/static-build",
       "config": {
         "distDir": "build",
-        "buildCommand": "chmod +x ./node_modules/.bin/react-scripts && CI=false npm run build"
+        "buildCommand": "CI=false npx react-scripts build"
       }
     }
   ],
