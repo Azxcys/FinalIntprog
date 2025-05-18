@@ -1,17 +1,5 @@
 {
   "version": 2,
-  "public": true,
-  "builds": [
-    {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": {
-        "distDir": "build",
-        "installCommand": "npm install",
-        "buildCommand": "chmod +x node_modules/.bin/react-scripts && CI=false npm run build"
-      }
-    }
-  ],
   "routes": [
     {
       "src": "/static/(.*)",
