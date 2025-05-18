@@ -1,15 +1,12 @@
 {
   "version": 2,
-  "buildCommand": "CI=false npm run build",
-  "installCommand": "npm install",
-  "framework": "create-react-app",
+  "public": true,
   "builds": [
     {
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "build",
-        "buildCommand": "CI=false npx react-scripts build"
+        "distDir": "build"
       }
     }
   ],
@@ -23,16 +20,7 @@
       "dest": "/favicon.ico"
     },
     {
-      "src": "/manifest.json",
-      "dest": "/manifest.json"
-    },
-    {
-      "src": "/asset-manifest.json",
-      "dest": "/asset-manifest.json"
-    },
-    {
       "src": "/(.*)",
-      "headers": { "cache-control": "s-maxage=0" },
       "dest": "/index.html"
     }
   ]
