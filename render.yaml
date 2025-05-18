@@ -1,14 +1,14 @@
 services:
   - type: web
     name: ipt-final-2025-frontend
-    env: static
-    buildCommand: npm install -g react-scripts && npm install && CI=false npm run build
-    staticPublishPath: ./build
+    env: node
+    buildCommand: npm install && CI=false npm run build
+    startCommand: npx serve -s build
     envVars:
       - key: REACT_APP_API_URL
         value: https://finalintproggroupf.onrender.com/api
       - key: NODE_VERSION
-        value: 18.x
+        value: 16
     routes:
       - type: rewrite
         source: /*
