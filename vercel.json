@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "chmod +x build.sh && ./build.sh",
+  "installCommand": "npm install",
   "routes": [
     {
       "src": "/static/(.*)",
