@@ -17,13 +17,19 @@ server/node_modules/
 # Environment variables
 .env
 .env.local
+.env.development
 .env.development.local
+.env.test
 .env.test.local
+.env.production
 .env.production.local
 server/.env
 server/.env.local
+server/.env.development
 server/.env.development.local
+server/.env.test
 server/.env.test.local
+server/.env.production
 server/.env.production.local
 
 # Database
@@ -70,8 +76,21 @@ desktop.ini
 .debug/
 debug.log
 
+# Deployment
+.vercel
+.netlify
+render.yaml
+vercel.json
+.serverless/
+.serverless
+.serverless.yml
+.serverless.yaml
+.serverless.json
+
 # Misc
 .tmp/
 .temp/
-.vercel
-.netlify 
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local 
