@@ -1,4 +1,4 @@
-import { Account } from './storageService';
+import { Employee, Department, Account, Request, TransferRecord } from './storageService';
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -127,6 +127,50 @@ const deleteRequest = async (id: string) => {
   return response.json();
 };
 
+// Transfers
+const getTransfers = async (): Promise<TransferRecord[]> => {
+  const response = await fetch(`${API_URL}/transfers`);
+  if (!response.ok) {
+    throw new Error('Failed to fetch transfers');
+  }
+  return response.json();
+};
+
+const addTransfer = async (transfer: TransferRecord): Promise<void> => {
+  const response = await fetch(`${API_URL}/transfers`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(transfer),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create transfer');
+  }
+};
+
+const updateTransfer = async (id: string, transfer: TransferRecord): Promise<void> => {
+  const response = await fetch(`${API_URL}/transfers/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(transfer),
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update transfer');
+  }
+};
+
+const deleteTransfer = async (id: string): Promise<void> => {
+  const response = await fetch(`${API_URL}/transfers/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to delete transfer');
+  }
+};
+
 // API endpoints
 export const apiService = {
   // Get all data
@@ -150,4 +194,9 @@ export const apiService = {
   addRequest: postRequest,
   updateRequest: putRequest,
   deleteRequest: deleteRequest,
+  // Transfers
+  getTransfers: getTransfers,
+  addTransfer: addTransfer,
+  updateTransfer: updateTransfer,
+  deleteTransfer: deleteTransfer,
 }; 

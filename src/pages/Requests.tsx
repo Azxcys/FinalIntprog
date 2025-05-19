@@ -82,7 +82,11 @@ const Requests = () => {
       await loadData();
       handleMenuClose();
     } catch (error: any) {
-      setErrorMsg(error.message || 'Failed to delete request');
+      let msg = 'Failed to delete request';
+      if (error.response && error.response.details) msg += ': ' + error.response.details;
+      else if (error.details) msg += ': ' + error.details;
+      else if (error.message) msg += ': ' + error.message;
+      setErrorMsg(msg);
     }
   };
 
@@ -93,7 +97,11 @@ const Requests = () => {
       await loadData();
       handleMenuClose();
     } catch (error: any) {
-      setErrorMsg(error.message || 'Failed to update request status');
+      let msg = 'Failed to update request status';
+      if (error.response && error.response.details) msg += ': ' + error.response.details;
+      else if (error.details) msg += ': ' + error.details;
+      else if (error.message) msg += ': ' + error.message;
+      setErrorMsg(msg);
     }
   };
 
@@ -112,17 +120,44 @@ const Requests = () => {
     setSelectedRequest(undefined);
   };
 
+  const getNextRequestId = () => {
+    if (requests.length === 0) return 'REQ001';
+    const maxNum = requests.reduce((max, req) => {
+      const num = parseInt(req.id.replace('REQ', ''));
+      return isNaN(num) ? max : Math.max(max, num);
+    }, 0);
+    return `REQ${String(maxNum + 1).padStart(3, '0')}`;
+  };
+
+  const getDialogRequest = (): Request => {
+    if (selectedRequest) return selectedRequest;
+    return {
+      id: getNextRequestId(),
+      type: 'Equipment' as 'Equipment',
+      employeeId: employees[0]?.id || '',
+      description: '',
+      requestDate: new Date().toISOString().split('T')[0],
+      items: [{ name: '', quantity: 1 }],
+      status: 'Pending' as 'Pending',
+    };
+  };
+
   const handleSaveRequest = async (request: Request) => {
     try {
       if (dialogMode === 'add') {
-        await apiService.addRequest(request);
+        const newRequest = { ...request, id: getNextRequestId() };
+        await apiService.addRequest(newRequest);
       } else {
         await apiService.updateRequest(request.id, request);
       }
       await loadData();
       setDialogOpen(false);
     } catch (error: any) {
-      setErrorMsg(error.message || 'Failed to save request');
+      let msg = 'Failed to save request';
+      if (error.response && error.response.details) msg += ': ' + error.response.details;
+      else if (error.details) msg += ': ' + error.details;
+      else if (error.message) msg += ': ' + error.message;
+      setErrorMsg(msg);
     }
   };
 
@@ -258,10 +293,10 @@ const Requests = () => {
         open={dialogOpen}
         onClose={handleDialogClose}
         onSave={handleSaveRequest}
-        request={selectedRequest}
+        request={getDialogRequest()}
         mode={dialogMode}
         employees={employees}
-        nextRequestId={''}
+        nextRequestId={getNextRequestId()}
       />
     </Container>
   );

@@ -27,7 +27,7 @@ import { apiService } from '../services/apiService';
 const Employees = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [departments, setDepartments] = useState<any[]>([]);
-  const [transfers, setTransfers] = useState<TransferRecord[]>([]); // Placeholder, implement backend if needed
+  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -42,14 +42,16 @@ const Employees = () => {
   // Load initial data
   const loadData = async () => {
     try {
-      const [empData, deptData, reqData] = await Promise.all([
+      const [empData, deptData, reqData, transferData] = await Promise.all([
         apiService.getEmployees(),
         apiService.getDepartments(),
         apiService.getRequests(),
+        apiService.getTransfers(),
       ]);
       setEmployees(empData);
       setDepartments(deptData);
       setRequests(reqData);
+      setTransfers(transferData);
     } catch (error: any) {
       setErrorMsg(error.message || 'Failed to load data');
     }
@@ -167,15 +169,43 @@ const Employees = () => {
   const handleTransfer = async (newDepartment: string) => {
     if (selectedEmployee) {
       try {
+        // Create transfer record
+        const transferId = `TRF${String(Date.now()).slice(-6)}`;
+        const transfer: TransferRecord = {
+          id: transferId,
+          employeeId: selectedEmployee.id,
+          fromDepartment: selectedEmployee.department,
+          toDepartment: newDepartment,
+          date: new Date().toISOString().split('T')[0],
+          status: 'Pending' as 'Pending' | 'Approved' | 'Disapproved'
+        };
+        
+        // Add transfer record
+        await apiService.addTransfer(transfer);
+        
+        // Update employee department
         await apiService.updateEmployee(selectedEmployee.id, {
           ...selectedEmployee,
           department: newDepartment,
         });
+        
         await loadData();
         setTransferDialogOpen(false);
       } catch (error: any) {
         setErrorMsg(error.message || 'Failed to transfer employee');
       }
+    }
+  };
+
+  const handleTransferStatusChange = async (transferId: string, newStatus: 'Pending' | 'Approved' | 'Disapproved') => {
+    try {
+      const transfer = transfers.find(t => t.id === transferId);
+      if (transfer) {
+        await apiService.updateTransfer(transferId, { ...transfer, status: newStatus });
+        await loadData();
+      }
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to update transfer status');
     }
   };
 
@@ -313,7 +343,7 @@ const Employees = () => {
             transfers={transfers}
             requests={requests}
             department={selectedEmployee.department}
-            onTransferStatusChange={() => {}}
+            onTransferStatusChange={handleTransferStatusChange}
           />
           <RequestDialog
             open={requestDialogOpen}

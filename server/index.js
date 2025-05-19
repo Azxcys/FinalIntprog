@@ -207,18 +207,159 @@ app.delete('/api/employees/:id', async (req, res) => {
   }
 });
 
-// Add requests endpoint
+// REQUESTS CRUD ENDPOINTS
+// Get all requests (with items)
 app.get('/api/requests', async (req, res) => {
   try {
-    const [rows] = await pool.query('SELECT * FROM requests');
-    console.log('Requests fetched:', rows.length);
-    res.json(rows);
+    const [requests] = await pool.query('SELECT * FROM requests');
+    for (const req of requests) {
+      const [items] = await pool.query('SELECT name, quantity FROM request_items WHERE requestId = ?', [req.id]);
+      req.items = items || [];
+    }
+    res.json(requests);
   } catch (error) {
-    console.error('Error fetching requests. Full error:', error);
-    res.status(500).json({ 
-      error: 'Failed to fetch requests',
-      details: error.message 
-    });
+    res.status(500).json({ error: 'Failed to fetch requests', details: error.sqlMessage || error.message });
+  }
+});
+
+// Add request (with items)
+app.post('/api/requests', async (req, res) => {
+  const { id, type, employeeId, description, requestDate, status, items } = req.body;
+  // Validation: reject if any required field is missing or empty
+  if (!id || !type || !employeeId || !description || !requestDate || !status) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query(
+      'INSERT INTO requests (id, type, employeeId, description, requestDate, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, type, employeeId, description, requestDate, status]
+    );
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        await conn.query(
+          'INSERT INTO request_items (requestId, name, quantity) VALUES (?, ?, ?)',
+          [id, item.name, item.quantity]
+        );
+      }
+    }
+    await conn.commit();
+    res.status(201).json({ message: 'Request created' });
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: 'Failed to create request', details: error.sqlMessage || error.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// Edit request (with items)
+app.put('/api/requests/:id', async (req, res) => {
+  const { id } = req.params;
+  const { type, employeeId, description, requestDate, status, items } = req.body;
+  // Validation: reject if any required field is missing or empty
+  if (!id || !type || !employeeId || !description || !requestDate || !status) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query(
+      'UPDATE requests SET type=?, employeeId=?, description=?, requestDate=?, status=? WHERE id=?',
+      [type, employeeId, description, requestDate, status, id]
+    );
+    await conn.query('DELETE FROM request_items WHERE requestId=?', [id]);
+    if (Array.isArray(items)) {
+      for (const item of items) {
+        await conn.query(
+          'INSERT INTO request_items (requestId, name, quantity) VALUES (?, ?, ?)',
+          [id, item.name, item.quantity]
+        );
+      }
+    }
+    await conn.commit();
+    res.json({ message: 'Request updated' });
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: 'Failed to update request', details: error.sqlMessage || error.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// Delete request (and its items)
+app.delete('/api/requests/:id', async (req, res) => {
+  const { id } = req.params;
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.query('DELETE FROM request_items WHERE requestId=?', [id]);
+    await conn.query('DELETE FROM requests WHERE id=?', [id]);
+    await conn.commit();
+    res.json({ message: 'Request deleted' });
+  } catch (error) {
+    await conn.rollback();
+    res.status(500).json({ error: 'Failed to delete request', details: error.sqlMessage || error.message });
+  } finally {
+    conn.release();
+  }
+});
+
+// TRANSFERS CRUD ENDPOINTS
+// Get all transfers
+app.get('/api/transfers', async (req, res) => {
+  try {
+    const [transfers] = await pool.query('SELECT * FROM transfers');
+    res.json(transfers);
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to fetch transfers', details: error.sqlMessage || error.message });
+  }
+});
+
+// Add transfer
+app.post('/api/transfers', async (req, res) => {
+  const { id, employeeId, fromDepartment, toDepartment, date, status } = req.body;
+  if (!id || !employeeId || !fromDepartment || !toDepartment || !date || !status) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  try {
+    await pool.query(
+      'INSERT INTO transfers (id, employeeId, fromDepartment, toDepartment, date, status) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, employeeId, fromDepartment, toDepartment, date, status]
+    );
+    res.status(201).json({ message: 'Transfer created' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to create transfer', details: error.sqlMessage || error.message });
+  }
+});
+
+// Edit transfer
+app.put('/api/transfers/:id', async (req, res) => {
+  const { id } = req.params;
+  const { employeeId, fromDepartment, toDepartment, date, status } = req.body;
+  if (!id || !employeeId || !fromDepartment || !toDepartment || !date || !status) {
+    return res.status(400).json({ error: 'Missing required fields' });
+  }
+  try {
+    await pool.query(
+      'UPDATE transfers SET employeeId=?, fromDepartment=?, toDepartment=?, date=?, status=? WHERE id=?',
+      [employeeId, fromDepartment, toDepartment, date, status, id]
+    );
+    res.json({ message: 'Transfer updated' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to update transfer', details: error.sqlMessage || error.message });
+  }
+});
+
+// Delete transfer
+app.delete('/api/transfers/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    await pool.query('DELETE FROM transfers WHERE id=?', [id]);
+    res.json({ message: 'Transfer deleted' });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to delete transfer', details: error.sqlMessage || error.message });
   }
 });
 
