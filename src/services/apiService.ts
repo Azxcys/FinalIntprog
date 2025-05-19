@@ -1,4 +1,4 @@
-import { Employee, Department, Account, Request, TransferRecord } from './storageService';
+import { Account, TransferRecord } from './storageService';
 
 const API_URL = 'http://localhost:5000/api';
 

@@ -6,7 +6,6 @@ import {
   DialogActions,
   TextField,
   Button,
-  FormHelperText,
 } from '@mui/material';
 import { Department } from '../services/storageService';
 
