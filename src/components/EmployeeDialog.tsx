@@ -116,23 +116,17 @@ const EmployeeDialog: React.FC<EmployeeDialogProps> = ({
           value={formData.id}
           disabled
         />
-        <FormControl fullWidth margin="normal" error={!!errors.account}>
-          <InputLabel>Account</InputLabel>
-          <Select
-            name="account"
-            value={formData.account}
-            label="Account"
-            onChange={handleSelectChange}
-            required
-          >
-            {accounts.map((acc) => (
-              <MenuItem key={acc.email} value={acc.email}>
-                {acc.email}
-              </MenuItem>
-            ))}
-          </Select>
-          {errors.account && <FormHelperText>{errors.account}</FormHelperText>}
-        </FormControl>
+        <TextField
+          fullWidth
+          margin="normal"
+          label="Account"
+          name="account"
+          value={formData.account}
+          onChange={handleInputChange}
+          error={!!errors.account}
+          helperText={errors.account}
+          required
+        />
         <TextField
           fullWidth
           margin="normal"

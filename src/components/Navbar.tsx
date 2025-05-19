@@ -7,7 +7,7 @@ const Navbar = () => {
     <AppBar position="static">
       <Toolbar>
         <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          IPT Final (Group F)
+          IPT Final (Group F) - Magsayo
         </Typography>
         <Box>
           <Button color="inherit" component={RouterLink} to="/accounts">
