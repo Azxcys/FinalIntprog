@@ -17,18 +17,28 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AccountDialog from '../components/AccountDialog';
-import { storageService, Account } from '../services/storageService';
+import { Account } from '../services/storageService';
+import { apiService } from '../services/apiService';
 
 const Accounts = () => {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedAccount, setSelectedAccount] = useState<Account | undefined>();
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Load initial data
+  const loadAccounts = async () => {
+    try {
+      const data = await apiService.getAccounts();
+      setAccounts(data);
+    } catch (error) {
+      console.error('Failed to load accounts:', error);
+    }
+  };
+
   useEffect(() => {
-    storageService.initializeStorage();
-    setAccounts(storageService.getAccounts());
+    loadAccounts();
   }, []);
 
   const handleAddClick = () => {
@@ -43,10 +53,14 @@ const Accounts = () => {
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (accountToDelete: Account) => {
-    const updatedAccounts = accounts.filter(account => account.email !== accountToDelete.email);
-    setAccounts(updatedAccounts);
-    storageService.setAccounts(updatedAccounts);
+  const handleDeleteClick = async (accountToDelete: Account) => {
+    try {
+      await apiService.deleteAccount(accountToDelete.email);
+      await loadAccounts();
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to delete account');
+      console.error('Failed to delete account:', error);
+    }
   };
 
   const handleDialogClose = () => {
@@ -54,19 +68,25 @@ const Accounts = () => {
     setSelectedAccount(undefined);
   };
 
-  const handleSaveAccount = (account: Account) => {
-    let updatedAccounts: Account[];
-    if (dialogMode === 'add') {
-      updatedAccounts = [...accounts, account];
-    } else {
-      updatedAccounts = accounts.map(a => a.email === selectedAccount?.email ? account : a);
+  const handleSaveAccount = async (account: Account) => {
+    try {
+      if (dialogMode === 'add') {
+        await apiService.addAccount(account);
+      } else {
+        await apiService.updateAccount(account.email, account);
+      }
+      await loadAccounts();
+      setDialogOpen(false);
+    } catch (error) {
+      console.error('Failed to save account:', error);
     }
-    setAccounts(updatedAccounts);
-    storageService.setAccounts(updatedAccounts);
   };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {errorMsg && (
+        <div style={{ color: 'red', marginBottom: 8 }}>{errorMsg}</div>
+      )}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>
           ACCOUNTS
@@ -102,14 +122,12 @@ const Accounts = () => {
                     <Stack direction="row" spacing={1}>
                       <IconButton
                         size="small"
-                        color="primary"
                         onClick={() => handleEditClick(account)}
                       >
                         <EditIcon />
                       </IconButton>
                       <IconButton
                         size="small"
-                        color="error"
                         onClick={() => handleDeleteClick(account)}
                       >
                         <DeleteIcon />
@@ -124,13 +142,12 @@ const Accounts = () => {
         <Button
           variant="contained"
           color="primary"
-          sx={{ mt: 2 }}
           onClick={handleAddClick}
+          sx={{ mt: 2 }}
         >
           Add Account
         </Button>
       </Paper>
-
       <AccountDialog
         open={dialogOpen}
         onClose={handleDialogClose}

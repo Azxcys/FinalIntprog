@@ -16,7 +16,8 @@ import {
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import DepartmentDialog from '../components/DepartmentDialog';
-import { storageService, Department } from '../services/storageService';
+import { Department } from '../services/storageService';
+import { apiService } from '../services/apiService';
 
 const Departments = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
@@ -24,14 +25,29 @@ const Departments = () => {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | undefined>();
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Load departments and counts
+  const loadData = async () => {
+    try {
+      const [deptData, empData] = await Promise.all([
+        apiService.getDepartments(),
+        apiService.getEmployees(),
+      ]);
+      setDepartments(deptData);
+      // Count employees per department
+      const counts: Record<string, number> = {};
+      empData.forEach((emp: any) => {
+        counts[emp.department] = (counts[emp.department] || 0) + 1;
+      });
+      setEmployeeCounts(counts);
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to load data');
+    }
+  };
+
   useEffect(() => {
-    storageService.initializeStorage();
-    const loadedDepartments = storageService.getDepartments();
-    const counts = storageService.getAllDepartmentCounts();
-    setDepartments(loadedDepartments);
-    setEmployeeCounts(counts);
+    loadData();
   }, []);
 
   const handleAddClick = () => {
@@ -46,12 +62,13 @@ const Departments = () => {
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (departmentToDelete: Department) => {
-    const updatedDepartments = departments.filter(
-      (dept) => dept.name !== departmentToDelete.name
-    );
-    setDepartments(updatedDepartments);
-    storageService.setDepartments(updatedDepartments);
+  const handleDeleteClick = async (departmentToDelete: Department) => {
+    try {
+      await apiService.deleteDepartment(departmentToDelete.name);
+      await loadData();
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to delete department');
+    }
   };
 
   const handleDialogClose = () => {
@@ -59,32 +76,25 @@ const Departments = () => {
     setSelectedDepartment(undefined);
   };
 
-  const handleSaveDepartment = (department: Department) => {
-    let updatedDepartments: Department[];
-    if (dialogMode === 'add') {
-      updatedDepartments = [...departments, department];
-    } else {
-      updatedDepartments = departments.map((d) =>
-        d.name === selectedDepartment?.name ? department : d
-      );
+  const handleSaveDepartment = async (department: Department) => {
+    try {
+      if (dialogMode === 'add') {
+        await apiService.addDepartment(department);
+      } else {
+        await apiService.updateDepartment(department.name, department);
+      }
+      await loadData();
+      setDialogOpen(false);
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to save department');
     }
-    setDepartments(updatedDepartments);
-    storageService.setDepartments(updatedDepartments);
   };
-
-  // Update counts when employees change
-  useEffect(() => {
-    const handleStorageChange = () => {
-      const counts = storageService.getAllDepartmentCounts();
-      setEmployeeCounts(counts);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {errorMsg && (
+        <div style={{ color: 'red', marginBottom: 8 }}>{errorMsg}</div>
+      )}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>
           DEPARTMENTS
@@ -137,7 +147,6 @@ const Departments = () => {
           Add Department
         </Button>
       </Paper>
-
       <DepartmentDialog
         open={dialogOpen}
         onClose={handleDialogClose}

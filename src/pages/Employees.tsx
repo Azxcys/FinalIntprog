@@ -21,12 +21,13 @@ import TransferDialog from '../components/TransferDialog';
 import WorkflowDialog from '../components/WorkflowDialog';
 import RequestDialog from '../components/RequestDialog';
 import EmployeeRequestsDialog from '../components/EmployeeRequestsDialog';
-import { storageService, Employee, TransferRecord, Request } from '../services/storageService';
+import { Employee, TransferRecord, Request } from '../services/storageService';
+import { apiService } from '../services/apiService';
 
 const Employees = () => {
   const [employees, setEmployees] = useState<Employee[]>([]);
-  const [departments, setDepartments] = useState(storageService.getDepartments());
-  const [transfers, setTransfers] = useState<TransferRecord[]>([]);
+  const [departments, setDepartments] = useState<any[]>([]);
+  const [transfers, setTransfers] = useState<TransferRecord[]>([]); // Placeholder, implement backend if needed
   const [requests, setRequests] = useState<Request[]>([]);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [transferDialogOpen, setTransferDialogOpen] = useState(false);
@@ -36,14 +37,26 @@ const Employees = () => {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | undefined>();
   const [selectedRequest, setSelectedRequest] = useState<Request | undefined>();
   const [dialogMode, setDialogMode] = useState<'add' | 'edit'>('add');
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   // Load initial data
+  const loadData = async () => {
+    try {
+      const [empData, deptData, reqData] = await Promise.all([
+        apiService.getEmployees(),
+        apiService.getDepartments(),
+        apiService.getRequests(),
+      ]);
+      setEmployees(empData);
+      setDepartments(deptData);
+      setRequests(reqData);
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to load data');
+    }
+  };
+
   useEffect(() => {
-    storageService.initializeStorage();
-    setEmployees(storageService.getEmployees());
-    setDepartments(storageService.getDepartments());
-    setTransfers(storageService.getTransfers());
-    setRequests(storageService.getRequests());
+    loadData();
   }, []);
 
   // Function to generate next employee ID
@@ -67,10 +80,13 @@ const Employees = () => {
     setDialogOpen(true);
   };
 
-  const handleDeleteClick = (employeeToDelete: Employee) => {
-    const updatedEmployees = employees.filter((emp) => emp.id !== employeeToDelete.id);
-    setEmployees(updatedEmployees);
-    storageService.setEmployees(updatedEmployees);
+  const handleDeleteClick = async (employeeToDelete: Employee) => {
+    try {
+      await apiService.deleteEmployee(employeeToDelete.id);
+      await loadData();
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to delete employee');
+    }
   };
 
   const handleTransferClick = (employee: Employee) => {
@@ -125,74 +141,64 @@ const Employees = () => {
     setRequestHistoryDialogOpen(false);
   };
 
-  const handleDeleteRequest = (request: Request) => {
-    storageService.deleteRequest(request.id);
-    setRequests(storageService.getRequests());
-  };
-
-  const handleSaveEmployee = (employee: Employee) => {
-    let updatedEmployees: Employee[];
-    if (dialogMode === 'add') {
-      updatedEmployees = [...employees, employee];
-    } else {
-      updatedEmployees = employees.map((e) => (e.id === employee.id ? employee : e));
+  const handleDeleteRequest = async (request: Request) => {
+    try {
+      await apiService.deleteRequest(request.id);
+      await loadData();
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to delete request');
     }
-    setEmployees(updatedEmployees);
-    storageService.setEmployees(updatedEmployees);
   };
 
-  const handleTransfer = (newDepartment: string) => {
+  const handleSaveEmployee = async (employee: Employee) => {
+    try {
+      if (dialogMode === 'add') {
+        await apiService.addEmployee(employee);
+      } else {
+        await apiService.updateEmployee(employee.id, employee);
+      }
+      await loadData();
+      setDialogOpen(false);
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to save employee');
+    }
+  };
+
+  const handleTransfer = async (newDepartment: string) => {
     if (selectedEmployee) {
-      const transfer: TransferRecord = {
-        id: `TRF${String(transfers.length + 1).padStart(3, '0')}`,
-        employeeId: selectedEmployee.id,
-        fromDepartment: selectedEmployee.department,
-        toDepartment: newDepartment,
-        date: new Date().toISOString().split('T')[0],
-        status: 'Pending'
-      };
-      storageService.addTransfer(transfer);
-      setTransfers([...transfers, transfer]);
-      
-      // Update employee's department
-      const updatedEmployee = { ...selectedEmployee, department: newDepartment };
-      const updatedEmployees = employees.map(emp =>
-        emp.id === selectedEmployee.id ? updatedEmployee : emp
-      );
-      setEmployees(updatedEmployees);
-      storageService.setEmployees(updatedEmployees);
+      try {
+        await apiService.updateEmployee(selectedEmployee.id, {
+          ...selectedEmployee,
+          department: newDepartment,
+        });
+        await loadData();
+        setTransferDialogOpen(false);
+      } catch (error: any) {
+        setErrorMsg(error.message || 'Failed to transfer employee');
+      }
     }
   };
 
-  const handleSaveRequest = (request: Request) => {
-    if (dialogMode === 'add') {
-      storageService.addRequest(request);
-    } else {
-      storageService.updateRequest(request);
+  const handleSaveRequest = async (request: Request) => {
+    try {
+      if (dialogMode === 'add') {
+        await apiService.addRequest(request);
+      } else {
+        await apiService.updateRequest(request.id, request);
+      }
+      await loadData();
+      setRequestDialogOpen(false);
+      setSelectedRequest(undefined);
+    } catch (error: any) {
+      setErrorMsg(error.message || 'Failed to save request');
     }
-    setRequests(storageService.getRequests());
-    setRequestDialogOpen(false);
-    setSelectedRequest(undefined);
-  };
-
-  const handleTransferStatusChange = (transferId: string, newStatus: 'Pending' | 'Approved' | 'Disapproved') => {
-    const updatedTransfers = transfers.map(transfer => 
-      transfer.id === transferId 
-        ? { ...transfer, status: newStatus }
-        : transfer
-    );
-    setTransfers(updatedTransfers);
-    storageService.setTransfers(updatedTransfers);
-  };
-
-  // Get account display name
-  const getAccountDisplay = (email: string) => {
-    const account = storageService.getAccounts().find(a => a.email === email);
-    return account ? `${account.title} ${account.firstName} ${account.lastName} (${account.role})` : email;
   };
 
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {errorMsg && (
+        <div style={{ color: 'red', marginBottom: 8 }}>{errorMsg}</div>
+      )}
       <Paper sx={{ p: 2 }}>
         <Typography variant="h6" gutterBottom>
           EMPLOYEES
@@ -201,7 +207,7 @@ const Employees = () => {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Employee ID</TableCell>
+                <TableCell>ID</TableCell>
                 <TableCell>Account</TableCell>
                 <TableCell>Position</TableCell>
                 <TableCell>Department</TableCell>
@@ -214,7 +220,7 @@ const Employees = () => {
               {employees.map((employee) => (
                 <TableRow key={employee.id}>
                   <TableCell>{employee.id}</TableCell>
-                  <TableCell>{getAccountDisplay(employee.account)}</TableCell>
+                  <TableCell>{employee.account}</TableCell>
                   <TableCell>{employee.position}</TableCell>
                   <TableCell>{employee.department}</TableCell>
                   <TableCell>{employee.hireDate}</TableCell>
@@ -287,7 +293,7 @@ const Employees = () => {
         employee={selectedEmployee}
         mode={dialogMode}
         departments={departments}
-        accounts={dialogMode === 'add' ? storageService.getAvailableAccounts() : storageService.getAccounts()}
+        accounts={[]}
         nextEmployeeId={getNextEmployeeId()}
       />
 
@@ -307,14 +313,14 @@ const Employees = () => {
             transfers={transfers}
             requests={requests}
             department={selectedEmployee.department}
-            onTransferStatusChange={handleTransferStatusChange}
+            onTransferStatusChange={() => {}}
           />
           <RequestDialog
             open={requestDialogOpen}
             onClose={handleRequestDialogClose}
             onSave={handleSaveRequest}
             request={selectedRequest || {
-              id: storageService.getNextRequestId(),
+              id: '',
               type: 'Equipment',
               employeeId: selectedEmployee?.id || '',
               description: '',
@@ -324,7 +330,7 @@ const Employees = () => {
             }}
             mode={dialogMode}
             employees={[selectedEmployee!]}
-            nextRequestId={storageService.getNextRequestId()}
+            nextRequestId={''}
           />
           <EmployeeRequestsDialog
             open={requestHistoryDialogOpen}
@@ -333,12 +339,7 @@ const Employees = () => {
             requests={requests}
             onEditRequest={handleEditRequest}
             onDeleteRequest={handleDeleteRequest}
-            onNewRequest={(employee) => {
-              setRequestHistoryDialogOpen(false);
-              setSelectedEmployee(employee);
-              setDialogMode('add');
-              setRequestDialogOpen(true);
-            }}
+            onNewRequest={handleNewRequestClick}
           />
         </>
       )}
